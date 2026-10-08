@@ -1,0 +1,22 @@
+# Core TTS & G2P
+pocket-tts
+transformers
+
+# Audio Processing
+vosk
+numpy
+soundfile
+gradio-webrtc
+
+# Web Interface
+gradio
+
+# Deep Learning (PyTorch)
+torch
+
+# Optional but often needed
+tqdm
+pyyaml
+safetensors
+tokenizers
+scipy
