@@ -17,6 +17,11 @@ from core.models import (
 class Orchestrator:
     """هماهنگ‌کنندهٔ تمام ماژول‌ها."""
 
+    # --------------------------------------------------------
+    #  intentهایی که بدون SQL پاسخ می‌گیرند
+    # --------------------------------------------------------
+    DIRECT_INTENTS = ("greeting", "thanks", "goodbye", "repeat")
+
     def __init__(self, stt, nlu, text2sql, guard, db, responder, tts):
         self.stt = stt
         self.nlu = nlu
@@ -83,14 +88,36 @@ class Orchestrator:
                 NaturalResponse(text=msg, is_empty=False),
             )
 
-        # ۳) Text-to-SQL (Mock)
+        # ۳) intentهای بدون نیاز به SQL (greeting, thanks, goodbye, repeat)
+        if request.intent in self.DIRECT_INTENTS:
+            print(f"[{rid}] direct response (no SQL)")
+            try:
+                empty_result = QueryResult(
+                    status="empty",
+                    columns=[],
+                    rows=[],
+                    row_count=0,
+                )
+                response = self.responder.build(empty_result, request)
+            except Exception as e:
+                print(f"[{rid}] ! Responder failed: {e}")
+                return self._error_turn(
+                    rid, text, f"خطای ساخت پاسخ: {e}", request=request
+                )
+
+            return self._finalize(
+                rid, text, request, None, None, response,
+            )
+
+        # ۴) Text-to-SQL (Mock)
         print(f"[{rid}] Text-to-SQL ...")
         try:
             sql_query = self.text2sql.generate(request)
         except Exception as e:
             print(f"[{rid}] ! Text2SQL failed: {e}")
-            return self._error_turn(rid, text, f"خطای تولید SQL: {e}",
-                                    request=request)
+            return self._error_turn(
+                rid, text, f"خطای تولید SQL: {e}", request=request
+            )
 
         if not sql_query.valid:
             return self._finalize(
@@ -104,7 +131,7 @@ class Orchestrator:
         print(f"[{rid}] SQL: {sql_query.sql[:80]}...")
         print(f"[{rid}] params: {sql_query.params}")
 
-        # ۴) SQL Guard
+        # ۵) SQL Guard
         print(f"[{rid}] SQL Guard ...")
         validation = self.guard.validate(sql_query.sql)
         if not validation.allowed:
@@ -115,7 +142,7 @@ class Orchestrator:
                 NaturalResponse(text=msg, is_empty=False),
             )
 
-        # ۵) اجرای دیتابیس (Mock)
+        # ۶) اجرای دیتابیس (Mock)
         print(f"[{rid}] DB execute ...")
         try:
             db_result = self.db.execute(
@@ -136,7 +163,7 @@ class Orchestrator:
             f"mock={db_result.is_mock}"
         )
 
-        # ۶) Responder
+        # ۷) Responder
         print(f"[{rid}] Responder ...")
         try:
             response = self.responder.build(db_result, request)
@@ -150,7 +177,7 @@ class Orchestrator:
 
         print(f"[{rid}] Response: {response.text!r}")
 
-        # ۷) TTS
+        # ۸) TTS
         return self._finalize(
             rid, text, request, sql_query, db_result, response,
         )

@@ -15,32 +15,11 @@ class PersianResponder:
     def build(self, result: QueryResult, request: ParsedRequest) -> NaturalResponse:
         """QueryResult + ParsedRequest → NaturalResponse."""
 
-        # خطای اجرای کوئری
-        if result.status == "error":
-            return NaturalResponse(
-                text="متأسفانه در اجرای درخواست خطایی رخ داد.",
-                is_empty=False,
-                error=result.error,
-            )
+        # ---------- intent تکرار ----------
+        if request.intent == "repeat":
+            return self._repeat_response(request)
 
-        # نتیجهٔ خالی
-        if result.status == "empty" or result.row_count == 0:
-            return NaturalResponse(
-                text=self._empty_message(request),
-                is_empty=True,
-            )
-
-        # بر اساس intent
-        if request.intent == "inventory_query":
-            return self._inventory_response(result)
-
-        if request.intent == "item_list":
-            return self._list_response(result, "کالا")
-
-        if request.intent == "warehouse_list":
-            return self._list_response(result, "انبار")
-
-        # intentهای بدون دیتابیس
+        # ---------- intentهای بدون دیتابیس ----------
         if request.intent == "greeting":
             return NaturalResponse(
                 text="سلام! چطور می‌توانم کمک کنم؟",
@@ -59,11 +38,62 @@ class PersianResponder:
                 is_empty=False,
             )
 
-        # fallback
+        # ---------- خطای اجرای کوئری ----------
+        if result.status == "error":
+            return NaturalResponse(
+                text="متأسفانه در اجرای درخواست خطایی رخ داد.",
+                is_empty=False,
+                error=result.error,
+            )
+
+        # ---------- نتیجهٔ خالی ----------
+        if result.status == "empty" or result.row_count == 0:
+            return NaturalResponse(
+                text=self._empty_message(request),
+                is_empty=True,
+            )
+
+        # ---------- بر اساس intent ----------
+        if request.intent == "inventory_query":
+            return self._inventory_response(result)
+
+        if request.intent == "item_list":
+            return self._list_response(result, "کالا")
+
+        if request.intent == "warehouse_list":
+            return self._list_response(result, "انبار")
+
+        # ---------- fallback ----------
         return NaturalResponse(
             text="پاسخ شما آماده است.",
             is_empty=False,
         )
+
+    # --------------------------------------------------------
+    #  پاسخ برای intent تکرار
+    # --------------------------------------------------------
+    def _repeat_response(self, request: ParsedRequest) -> NaturalResponse:
+        """کل متن کاربر را برای تکرار برمی‌گرداند."""
+        text = (request.entities.get("repeat_text") or "").strip()
+
+        if not text:
+            return NaturalResponse(
+                text="متن قابل تکرار پیدا نشد.",
+                is_empty=True,
+            )
+
+        # حذف کلمهٔ «تکرار» از انتهای متن برای طبیعی‌تر شدن
+        cleaned = text
+        for suffix in ["را تکرار کن", "تکرار کن", "را تکرار", "تکرار"]:
+            if cleaned.endswith(suffix):
+                cleaned = cleaned[: -len(suffix)].strip()
+                break
+
+        # اگر بعد از حذف خالی شد، از متن اصلی استفاده کن
+        if not cleaned:
+            cleaned = text
+
+        return NaturalResponse(text=cleaned, is_empty=False)
 
     # --------------------------------------------------------
     #  پاسخ برای استعلام موجودی
@@ -92,7 +122,6 @@ class PersianResponder:
         count = result.row_count
         count_fa = self._to_persian_digits(str(count))
 
-        # نام‌ها را استخراج کن (اولین ستون)
         names = [row[0] for row in result.rows]
 
         if count <= 5:

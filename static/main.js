@@ -1,6 +1,6 @@
 /* ============================================================
    ZSolution — Main Page Script
-   VAD + MediaRecorder + Text Input + History
+   VAD + MediaRecorder + Text Input + History + Help
    ============================================================ */
 
 const VAD_CONFIG = {
@@ -29,6 +29,8 @@ const state = {
 
 let mediaRecorder = null;
 let audioChunks   = [];
+let currentAudio  = null;
+let currentPlayingBtn = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -49,6 +51,8 @@ function refreshEls() {
     el.historyEmpty = $('zs-history-empty');
     el.historyCount = $('zs-history-count');
     el.clearBtn     = $('zs-clear-btn');
+    el.helpPanel    = $('zs-help-panel');
+    el.helpToggle   = $('zs-help-toggle');
     el.overlay      = $('zs-overlay');
     el.overlayT     = $('zs-overlay-title');
     el.overlayP     = $('zs-overlay-msg');
@@ -158,7 +162,6 @@ function addHistory(role, text, audioUrl) {
         audioUrl: audioUrl || null,
     });
 
-    // حداکثر ۲۰ پیام آخر
     if (state.history.length > VAD_CONFIG.MAX_HISTORY) {
         state.history = state.history.slice(-VAD_CONFIG.MAX_HISTORY);
     }
@@ -169,7 +172,6 @@ function addHistory(role, text, audioUrl) {
 function renderHistory() {
     if (!el.historyList) return;
 
-    // اگر خالی است
     if (state.history.length === 0) {
         el.historyList.innerHTML = '';
         if (el.historyEmpty) {
@@ -179,27 +181,14 @@ function renderHistory() {
     } else {
         if (el.historyEmpty) el.historyEmpty.style.display = 'none';
 
-        // فقط پیام‌های جدید اضافه می‌کنیم (بهبود کارایی)
-        const existing = el.historyList.querySelectorAll('.zs-msg').length;
-        const missing = state.history.slice(existing);
-
-        for (const item of missing) {
+        el.historyList.innerHTML = '';
+        for (const item of state.history) {
             el.historyList.appendChild(buildMessageEl(item));
-        }
-
-        // اگر تعداد بیشتر از پیام‌های نمایش داده‌شده بود، کاملاً rebuild
-        if (existing > state.history.length) {
-            el.historyList.innerHTML = '';
-            for (const item of state.history) {
-                el.historyList.appendChild(buildMessageEl(item));
-            }
         }
     }
 
-    // اسکرول به پایین
     el.historyList.scrollTop = el.historyList.scrollHeight;
 
-    // به‌روزرسانی شمارنده
     if (el.historyCount) {
         el.historyCount.textContent = state.history.length;
     }
@@ -227,7 +216,6 @@ function buildMessageEl(item) {
     body.className = 'zs-msg-body';
     body.textContent = item.text;
 
-    // دکمهٔ پخش صدا (فقط برای پیام ZAI)
     if (item.role !== 'user' && item.audioUrl) {
         const playBtn = document.createElement('button');
         playBtn.className = 'zs-msg-play';
@@ -249,16 +237,12 @@ function buildMessageEl(item) {
     return wrap;
 }
 
-let currentPlayingBtn = null;
-
 function playHistoryAudio(url, btn) {
-    // اگر همان دکمه در حال پخش است → متوقف کن
     if (currentPlayingBtn === btn) {
         if (currentAudio) currentAudio.pause();
         return;
     }
 
-    // توقف پخش قبلی
     if (currentAudio) {
         currentAudio.pause();
         if (currentPlayingBtn) currentPlayingBtn.classList.remove('playing');
@@ -283,8 +267,6 @@ function playHistoryAudio(url, btn) {
         currentPlayingBtn = null;
     });
 }
-
-let currentAudio = null;
 
 function clearHistory() {
     state.history = [];
@@ -485,7 +467,6 @@ async function sendTextToServer(text) {
     state.busy = true;
     setStatus('sending');
 
-    // افزودن پیام کاربر به History فوراً
     addHistory('user', text.trim(), null);
 
     try {
@@ -503,7 +484,7 @@ async function sendTextToServer(text) {
         setStatus('processing');
 
         const result = await res.json();
-        handleServerResult(result, true);   // skipUserHistory = true
+        handleServerResult(result, true);
 
     } catch (err) {
         debug('send error: ' + err.message);
@@ -519,12 +500,9 @@ async function sendTextToServer(text) {
 function handleServerResult(result, skipUserHistory) {
     debug('reply: ' + JSON.stringify(result).slice(0, 200));
 
-    // متن پاسخ
     if (result.text) {
         showFinalResponse(result.text);
-        // افزودن به History اگر از سمت صدا آمده (چون در متن، بالا اضافه شد)
         if (!skipUserHistory) {
-            // پیام کاربر: از STT
             if (result.stt_text) {
                 addHistory('user', result.stt_text, null);
             }
@@ -534,7 +512,6 @@ function handleServerResult(result, skipUserHistory) {
         }
     }
 
-    // پخش صدا
     if (result.audio_url) {
         playAudio(result.audio_url);
     } else {
@@ -614,6 +591,20 @@ function setupTextInput() {
 }
 
 // ============================================================
+//  Help Panel Toggle
+// ============================================================
+function setupHelpToggle() {
+    if (!el.helpToggle || !el.helpPanel) return;
+
+    // پیش‌فرض: بسته
+    el.helpPanel.classList.remove('open');
+
+    el.helpToggle.addEventListener('click', () => {
+        el.helpPanel.classList.toggle('open');
+    });
+}
+
+// ============================================================
 //  Init
 // ============================================================
 (async function init() {
@@ -621,6 +612,7 @@ function setupTextInput() {
     debug('init called');
 
     setupTextInput();
+    setupHelpToggle();
 
     if (el.clearBtn) {
         el.clearBtn.addEventListener('click', clearHistory);

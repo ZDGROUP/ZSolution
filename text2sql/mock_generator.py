@@ -10,6 +10,17 @@ class MockTextToSQL:
     """تولید کوئری SQL با template — فقط برای تست زنجیره."""
 
     # --------------------------------------------------------
+    #  intentهایی که SQL تولید نمی‌کنند
+    # --------------------------------------------------------
+    NO_SQL_INTENTS = (
+        "greeting",
+        "thanks",
+        "goodbye",
+        "repeat",
+        "unknown",
+    )
+
+    # --------------------------------------------------------
     #  شِمای آزمایشی (فقط برای مستندسازی)
     # --------------------------------------------------------
     SCHEMA = {
@@ -47,6 +58,17 @@ class MockTextToSQL:
         """ParsedRequest → SQLQuery."""
         intent = request.intent
 
+        # ---------- intentهای بدون SQL ----------
+        if intent in self.NO_SQL_INTENTS:
+            return SQLQuery(
+                sql="",
+                params={},
+                operation="read",
+                explanation="",
+                valid=False,
+            )
+
+        # ---------- intent ناشناخته ----------
         if intent not in self.TEMPLATES:
             return SQLQuery(
                 sql="",
@@ -56,12 +78,13 @@ class MockTextToSQL:
                 valid=False,
             )
 
+        # ---------- تولید SQL ----------
         sql = self.TEMPLATES[intent]
         params = {}
 
         if intent == "inventory_query":
-            item      = request.entities.get("item_name", "").strip()
-            warehouse = request.entities.get("warehouse_name", "").strip()
+            item      = (request.entities.get("item_name") or "").strip()
+            warehouse = (request.entities.get("warehouse_name") or "").strip()
 
             if not item or not warehouse:
                 return SQLQuery(

@@ -30,8 +30,15 @@ class RuleBasedNLU:
 
     # --------------------------------------------------------
     #  الگوهای intent (regex روی متن فارسی)
+    #  ترتیب مهم است — repeat باید اول باشد
     # --------------------------------------------------------
     INTENT_PATTERNS = {
+        "repeat": [
+            r"تکرار\s+کن",
+            r"بگو\s+دوباره",
+            r"دوباره\s+بگو",
+            r"تکرار",
+        ],
         "inventory_query": [
             r"موجودی\s+(.+?)\s+(?:در|توی|داخل|تویِ)\s+(.+?)(?:\s+چقدر|\s+چیه|\s+چیست|\s+هست|\?|$)",
             r"چقدر\s+(.+?)\s+(?:در|توی|داخل)\s+(.+?)(?:\s+داریم|\s+هست|\?|$)",
@@ -82,13 +89,24 @@ class RuleBasedNLU:
     def _build(self, intent, match, full_text) -> ParsedRequest:
         entities = {}
 
+        # ---------- intent تکرار ----------
+        if intent == "repeat":
+            entities["repeat_text"] = full_text.strip()
+            return ParsedRequest(
+                intent=intent,
+                entities=entities,
+                operation="read",
+                confidence=0.95,
+                requires_clarification=False,
+            )
+
+        # ---------- intent استعلام موجودی ----------
         if intent == "inventory_query":
             groups = match.groups()
             if len(groups) >= 2:
                 entities["item_name"]      = self._match_item(groups[0])
                 entities["warehouse_name"] = self._match_warehouse(groups[1])
             else:
-                # اگر regex فقط یک گروه گرفته بود، تلاش دوم
                 entities["item_name"]      = self._match_item(full_text)
                 entities["warehouse_name"] = self._match_warehouse(full_text)
 
@@ -100,7 +118,7 @@ class RuleBasedNLU:
                 requires_clarification=False,
             )
 
-        # intentهای بدون entity
+        # ---------- intentهای بدون entity ----------
         return ParsedRequest(
             intent=intent,
             entities={},
@@ -120,7 +138,7 @@ class RuleBasedNLU:
             confidence=0.0,
             requires_clarification=True,
             clarification_question=(
-                "ای بابا ، درخواست شما را متوجه نشدم. "
+                " درخواست شما را متوجه نشدم. "
                 "لطفاً دقیق‌تر بفرمایید. مثلاً: "
                 "«موجودی ورق فولادی در انبار مرکزی چقدر است؟»"
             ),
@@ -134,7 +152,6 @@ class RuleBasedNLU:
         for item in self.KNOWN_ITEMS:
             if item in raw:
                 return item
-        # اگر تطبیق نبود، خود raw را برگردان
         return raw
 
     def _match_warehouse(self, raw: str) -> str:

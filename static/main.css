@@ -1,7 +1,7 @@
 /* ============================================================
    ZSolution — Main Page
    Theme: Microsoft Dynamics 365 / Fluent 2.0
-   Layout: Two-column (Main + History)
+   Layout: Two-column (Main + History + Help)
    ============================================================ */
 
 :root {
@@ -440,10 +440,10 @@ html, body {
 }
 
 /* ============================================================
-   Right Column — History Panel
+   Right Column — History + Help
    ============================================================ */
 .zs-history-col {
-    width: 360px;
+    width: 380px;
     flex-shrink: 0;
     background: var(--d365-bg-card);
     border-inline-start: 1px solid var(--d365-divider);
@@ -452,8 +452,198 @@ html, body {
     overflow: hidden;
 }
 
+/* ============================================================
+   Help Panel
+   ============================================================ */
+.zs-help-panel {
+    border-bottom: 1px solid var(--d365-divider);
+    background: var(--d365-bg-card);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.zs-help-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--d365-duration-fast) var(--d365-ease);
+    flex-shrink: 0;
+}
+
+.zs-help-toggle:hover {
+    background: var(--d365-bg-secondary);
+}
+
+.zs-help-toggle svg.zs-help-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--d365-primary);
+    flex-shrink: 0;
+}
+
+.zs-help-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--d365-text-primary);
+    flex: 1;
+}
+
+.zs-help-chevron {
+    width: 14px;
+    height: 14px;
+    color: var(--d365-text-tertiary);
+    transition: transform var(--d365-duration-normal) var(--d365-ease);
+}
+
+.zs-help-panel.open .zs-help-chevron {
+    transform: rotate(180deg);
+}
+
+.zs-help-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height var(--d365-duration-slow) var(--d365-ease);
+}
+
+.zs-help-panel.open .zs-help-body {
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+.zs-help-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.zs-help-body::-webkit-scrollbar-thumb {
+    background: var(--d365-border-strong);
+    border-radius: 3px;
+}
+
+.zs-help-content {
+    padding: 4px 18px 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.zs-help-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.zs-help-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--d365-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.zs-help-section-title svg {
+    width: 13px;
+    height: 13px;
+}
+
+.zs-help-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.zs-help-list li {
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--d365-text-secondary);
+    padding-inline-start: 18px;
+    position: relative;
+}
+
+.zs-help-list li::before {
+    content: '•';
+    position: absolute;
+    inset-inline-start: 4px;
+    color: var(--d365-primary);
+    font-weight: 700;
+}
+
+.zs-help-steps {
+    list-style: none;
+    counter-reset: step;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.zs-help-steps li {
+    counter-increment: step;
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--d365-text-secondary);
+    padding-inline-start: 26px;
+    position: relative;
+}
+
+.zs-help-steps li::before {
+    content: counter(step);
+    position: absolute;
+    inset-inline-start: 0;
+    top: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #deecf9;
+    color: var(--d365-primary);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.zs-help-example {
+    background: var(--d365-bg-secondary);
+    border-inline-start: 3px solid var(--d365-primary);
+    border-radius: var(--d365-radius-sm);
+    padding: 8px 12px;
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--d365-text-primary);
+    direction: rtl;
+    text-align: right;
+}
+
+.zs-help-example code {
+    font-family: var(--d365-font-fa);
+    background: rgba(0, 120, 212, 0.1);
+    color: var(--d365-primary-dark);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.zs-help-divider {
+    height: 1px;
+    background: var(--d365-divider);
+    margin: 2px 0;
+}
+
+/* ---------- History Header ---------- */
 .zs-history-header {
-    padding: 14px 18px;
+    padding: 12px 18px;
     border-bottom: 1px solid var(--d365-divider);
     display: flex;
     align-items: center;
@@ -611,7 +801,6 @@ html, body {
 .zs-msg-play:hover {
     background: var(--d365-primary);
     border-color: var(--d365-primary);
-    color: white;
     transform: scale(1.1);
 }
 
